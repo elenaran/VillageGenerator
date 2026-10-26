@@ -33,6 +33,7 @@ import profotoce59.reecriture.VillagePools.*;
 
 import java.util.*;
 import profotoce59.utils.Utils;
+import profotoce59.utils.DecoratorRand;
 
 public class VillageGenerator extends Generator {
     public List<Piece> pieces;
@@ -40,6 +41,28 @@ public class VillageGenerator extends Generator {
     private boolean useHeightMapOptimizer = true;
     private boolean generated = false;
     private boolean superflat = false;
+    private long worldSeed;
+    private profotoce59.terrain.SurfaceHeightEstimator heightEstimator;
+
+    public profotoce59.terrain.SurfaceHeightEstimator getHeightEstimator() {
+        return this.heightEstimator;
+    }
+
+    public void setHeightEstimator(profotoce59.terrain.SurfaceHeightEstimator heightEstimator) {
+        this.heightEstimator = heightEstimator;
+    }
+
+    public long getWorldSeed() {
+        return this.worldSeed;
+    }
+
+    public VillageType getVillageType() {
+        return this.villageType;
+    }
+
+    public boolean isGenerated() {
+        return this.generated;
+    }
     public VillageGenerator(MCVersion version) {
         super(version);
     }
@@ -65,13 +88,14 @@ public class VillageGenerator extends Generator {
     }
     @Override
     public boolean generate(TerrainGenerator generator, int chunkX, int chunkZ, ChunkRand rand) {
+        this.worldSeed = generator.getWorldSeed();
         Biome biome = generator.getBiomeSource().getBiomeForNoiseGen((chunkX << 2) + 2, 0, (chunkZ << 2) + 2);
         this.villageType = VillageType.getType(biome, generator.getVersion(), this.superflat);
         if(this.villageType == null)return false;
 
         pieces = new ArrayList<>();
         rand = rand.asChunkRandDebugger();
-        Village village = new Village(this.getVersion());
+        Village village = VillageConfig.getVillage(this.getVersion());
         if(!village.canStart((RegionStructure.Data<Village>)village.at(chunkX, chunkZ),generator.getWorldSeed(),rand)){
             return false;
         }
@@ -84,7 +108,7 @@ public class VillageGenerator extends Generator {
             return false;
         }
 
-        rand.setCarverSeed(generator.getWorldSeed(), chunkX, chunkZ, generator.getVersion());
+        rand.setCarverSeed(generator.getWorldSeed(), chunkX, chunkZ, this.getVersion());
         BlockRotation rotation = BlockRotation.getRandom(rand);
 
         // compute the template
@@ -97,7 +121,7 @@ public class VillageGenerator extends Generator {
         BlockBox box = BlockBox.getBoundingBox(bPos, rotation, BPos.ORIGIN, BlockMirror.NONE, size);
         int centerX = (box.minX + box.maxX) / 2;
         int centerZ = (box.minZ + box.maxZ) / 2;
-        int heightY = generator.getFirstHeightInColumn(centerX,centerZ,TerrainGenerator.WORLD_SURFACE_WG);
+        int heightY = this.heightEstimator != null ? this.heightEstimator.getHeight(centerX, centerZ) : generator.getFirstHeightInColumn(centerX, centerZ, TerrainGenerator.WORLD_SURFACE_WG);
         int y = bPos.getY() + heightY;
         int centerY = box.minY + 1;
 
@@ -106,7 +130,7 @@ public class VillageGenerator extends Generator {
         piece.move(0, y - centerY, 0);
         piece.setBoundsTop(y + 80);
         BlockBox fullBox = new BlockBox(centerX - 80, y - 80, centerZ - 80, centerX + 80 + 1, y + 80 + 1, centerZ + 80 + 1);
-        Assembler assembler = new Assembler(6, generator,this.pieces,useHeightMapOptimizer,heightY);
+        Assembler assembler = new Assembler(6, generator, this.pieces, useHeightMapOptimizer, heightY, this.getVersion(), this.heightEstimator);
         assembler.pieces.add(piece);
         VoxelShape a = new VoxelShape(fullBox);
         a.fullBoxes.add(new BlockBox(box.minX,box.minY,box.minZ,box.maxX+1,box.maxY+1,box.maxZ+1));
@@ -146,6 +170,31 @@ public class VillageGenerator extends Generator {
 
     private void generateChunkLoot(List<Piece> generationPieces, OverworldTerrainGenerator generator, int chunkX, int chunkZ, ChunkRand rand){
         BlockBox chunkBox = new BlockBox(chunkX*16, chunkZ*16, chunkX*16 + 15, chunkZ*16 + 15);
+        if (generator.getVersion().isNewerOrEqualTo(MCVersion.v1_18)) {
+            DecoratorRand decRand = new DecoratorRand();
+            long popseed = decRand.getPopulationSeed(generator.getWorldSeed(), chunkX * 16, chunkZ * 16);
+            decRand.setDecoratorSeed(popseed, getFeatureIndex(), 4);
+
+            for (Piece piece : generationPieces) {
+                if (piece.type == PieceType.LegacySingle && piece.box.intersects(chunkBox)) {
+                    List<LootTable> tables = VillageStructureLoot.STRUCTURE_LOOT.get(piece.name);
+                    List<BPos> offsets = VillageStructureLoot.STRUCTURE_LOOT_OFFSETS.get(piece.name);
+                    if (tables == null || tables.isEmpty() || offsets == null) continue;
+
+                    for (int i = 0; i < tables.size(); i++) {
+                        BPos offset = offsets.get(i);
+                        if (chunkBox.contains(piece.pos.add(Piece.getTransformedPos(offset, piece.rotation)))) {
+                            long lootTableSeed = decRand.nextLong();
+                            if (tables.get(i) != MCLootTables.NULL) {
+                                tables.get(i).apply(generator.getVersion());
+                                piece.loot.addAll(tables.get(i).generate(new LootContext(lootTableSeed, generator.getVersion())));
+                            }
+                        }
+                    }
+                }
+            }
+            return;
+        }
         long populationSeed = rand.setPopulationSeed(generator.getWorldSeed(), chunkX*16, chunkZ*16, generator.getVersion());
 
         boolean confident = true;
@@ -452,21 +501,31 @@ public class VillageGenerator extends Generator {
         List<Piece> pieces;
         SurfaceGenerator2 sGen;
         boolean useHeightMapOptimizer;
+        int fixedHeight;
+        MCVersion version;
+        profotoce59.terrain.SurfaceHeightEstimator estimator;
 
         private final Deque<Piece> placing = new ArrayDeque<>();
-        Assembler(int maxDepth, TerrainGenerator generator, List<Piece> pieces, boolean useHeightMapOptimizer, int heightY) {
+        Assembler(int maxDepth, TerrainGenerator generator, List<Piece> pieces, boolean useHeightMapOptimizer, int heightY, MCVersion version, profotoce59.terrain.SurfaceHeightEstimator estimator) {
             this.maxDepth = maxDepth;
             this.generator = generator;
             this.pieces = pieces;
             this.useHeightMapOptimizer = useHeightMapOptimizer;
-            this.sGen = new SurfaceGenerator2(generator.getBiomeSource(), 256, 1, 2,
-                    NoiseSettings.create(0.9999999814507745, 0.9999999814507745, 80.0, 160.0)
-                            .addTopSlide(-10, 3, 0)
-                            .addBottomSlide(-30, 0, 0),
-                    1.0D, -0.46875D, true,heightY+25);//13*8
-            /* ------- //13 -> 13*8 = 104 si le village est plus que 104, il y aura une mauvaise gen, mais permet d'optimiser de beaucoup.*/
+            this.fixedHeight = heightY;
+            this.version = version;
+            this.estimator = estimator;
+            if (generator != null && useHeightMapOptimizer) {
+                this.sGen = new SurfaceGenerator2(generator.getBiomeSource(), 256, 1, 2,
+                        NoiseSettings.create(0.9999999814507745, 0.9999999814507745, 80.0, 160.0)
+                                .addTopSlide(-10, 3, 0)
+                                .addBottomSlide(-30, 0, 0),
+                        1.0D, -0.46875D, true, heightY + 25);
+            }
         }
 
+        Assembler(int maxDepth, TerrainGenerator generator, List<Piece> pieces, boolean useHeightMapOptimizer, int heightY) {
+            this(maxDepth, generator, pieces, useHeightMapOptimizer, heightY, generator != null ? generator.getVersion() : MCVersion.v1_16_5, null);
+        }
         public void tryPlacing(VillageType villageType, Piece piece, ChunkRand rand, boolean expansionHack) {
             int depth = piece.depth;
             BPos pos = piece.pos;
@@ -477,7 +536,7 @@ public class VillageGenerator extends Generator {
             int minY = box.minY;
             label139:
 
-            for (BlockJigsawInfo blockJigsawInfo : piece.getShuffledJigsawBlocks(villageType, pos, rand,generator.getVersion())) {
+            for (BlockJigsawInfo blockJigsawInfo : piece.getShuffledJigsawBlocks(villageType, pos, rand, this.version != null ? this.version : generator.getVersion())) {
                 BlockDirection blockDirection = blockJigsawInfo.getFront();
                 BPos blockPos = blockJigsawInfo.pos;
                 BPos relativeBlockPos = new BPos(blockPos.getX() + blockDirection.getVector().getX(),
@@ -485,10 +544,10 @@ public class VillageGenerator extends Generator {
                         blockPos.getZ() + blockDirection.getVector().getZ());
                 int y = blockPos.getY() - minY;
                 int state = -1;
-                Triplet<PoolType, List<Pair<String, Integer>>, PlacementBehaviour> pool = villageType.getPool(generator.getVersion()).get(blockJigsawInfo.nbt.getFirst());
+                Triplet<PoolType, List<Pair<String, Integer>>, PlacementBehaviour> pool = villageType.getPool(this.version != null ? this.version : generator.getVersion()).get(blockJigsawInfo.nbt.getFirst());
                 if (pool != null && pool.getSecond().size() != 0) {
                     PoolType fallbackLocation = pool.getFirst();
-                    Triplet<PoolType, List<Pair<String, Integer>>, PlacementBehaviour> fallbackPool = villageType.getPool(generator.getVersion()).get(fallbackLocation);
+                    Triplet<PoolType, List<Pair<String, Integer>>, PlacementBehaviour> fallbackPool = villageType.getPool(this.version != null ? this.version : generator.getVersion()).get(fallbackLocation);
                     if (fallbackPool != null && fallbackPool.getSecond().size() != 0) {
                         JigSawPool jigSawPool1 = new JigSawPool(pool.getSecond());
                         JigSawPool jigSawPool2 = new JigSawPool(fallbackPool.getSecond());
@@ -538,7 +597,7 @@ public class VillageGenerator extends Generator {
                                     box1 = BlockBox.getBoundingBox(BPos.ORIGIN, rotation1, BPos.ORIGIN, BlockMirror.NONE, size1);
                                 }
                                 Piece piece1 = new Piece(jigsawpiece1, BPos.ORIGIN, box1, rotation1, pool.getThird(),0);
-                                List<BlockJigsawInfo> list1 = piece1.getShuffledJigsawBlocks(villageType, BPos.ORIGIN, rand,generator.getVersion());
+                                List<BlockJigsawInfo> list1 = piece1.getShuffledJigsawBlocks(villageType, BPos.ORIGIN, rand, this.version != null ? this.version : generator.getVersion());
 
                                 int i1;
                                 if (expansionHack && box1.getYSpan() <= 16) {
@@ -573,11 +632,14 @@ public class VillageGenerator extends Generator {
                                             i2 = minY + l1;
                                         } else {
                                             if (state == -1) {
-                                                if(this.useHeightMapOptimizer){
-                                                    state = this.sGen.generateColumnfromY(blockPos.getX(), blockPos.getZ(),(block) -> block != Blocks.AIR);
-                                                }
-                                                else{
-                                                    state = this.generator.getFirstHeightInColumn(blockPos.getX(), blockPos.getZ(),(block) -> block != Blocks.AIR);
+                                                if (this.estimator != null) {
+                                                    state = this.estimator.getHeight(blockPos.getX(), blockPos.getZ());
+                                                } else if (this.useHeightMapOptimizer && this.sGen != null) {
+                                                    state = this.sGen.generateColumnfromY(blockPos.getX(), blockPos.getZ(), (block) -> block != Blocks.AIR);
+                                                } else if (this.generator != null) {
+                                                    state = this.generator.getFirstHeightInColumn(blockPos.getX(), blockPos.getZ(), (block) -> block != Blocks.AIR);
+                                                } else {
+                                                    state = this.fixedHeight;
                                                 }
 
 
@@ -645,6 +707,92 @@ public class VillageGenerator extends Generator {
         public boolean intersects2(BlockBox box1,BlockBox box) {
             return box1.maxX >= box.minX && box1.minX < box.maxX && box1.maxZ >= box.minZ && box1.minZ < box.maxZ && box1.maxY >= box.minY && box1.minY < box.maxY;
         }
+    }
+
+    public List<Triplet<BPos, LootTable, Long>> getChestsWithLootSeeds(long worldSeed, MCVersion version) {
+        if (!generated) {
+            throw new IllegalArgumentException("No village generated yet, please call generate and make sure the call returns true");
+        }
+        List<Triplet<BPos, LootTable, Long>> result = new ArrayList<>();
+        List<Piece> generationPieces = new ArrayList<>(pieces);
+        BlockBox maxbox = generationPieces.stream().map(x -> x.box).reduce((piece1, piece2) -> new BlockBox(
+                Math.min(piece1.minX, piece2.minX), Math.min(piece1.minY, piece2.minY), Math.min(piece1.minZ, piece2.minZ),
+                Math.max(piece1.maxX, piece2.maxX), Math.max(piece1.maxY, piece2.maxY), Math.max(piece1.maxZ, piece2.maxZ)))
+                .orElse(new BlockBox(0, 0, 0, 0, 0, 0));
+
+        ChunkRand rand = new ChunkRand();
+        DecoratorRand decRand = new DecoratorRand();
+
+        for (int x = maxbox.minX >> 4; x <= maxbox.maxX >> 4; x++) {
+            for (int z = maxbox.minZ >> 4; z <= maxbox.maxZ >> 4; z++) {
+                BlockBox chunkBox = new BlockBox(x * 16, z * 16, x * 16 + 15, z * 16 + 15);
+                if (version.isNewerOrEqualTo(MCVersion.v1_18)) {
+                    long popseed = decRand.getPopulationSeed(worldSeed, x * 16, z * 16);
+                    decRand.setDecoratorSeed(popseed, getFeatureIndex(), 4);
+
+                    for (Piece piece : generationPieces) {
+                        if (piece.type == PieceType.LegacySingle && piece.box.intersects(chunkBox)) {
+                            List<LootTable> tables = VillageStructureLoot.STRUCTURE_LOOT.get(piece.name);
+                            List<BPos> offsets = VillageStructureLoot.STRUCTURE_LOOT_OFFSETS.get(piece.name);
+                            if (tables == null || tables.isEmpty() || offsets == null) continue;
+
+                            for (int i = 0; i < tables.size(); i++) {
+                                BPos offset = offsets.get(i);
+                                BPos chestPos = piece.pos.add(Piece.getTransformedPos(offset, piece.rotation));
+                                if (chunkBox.contains(chestPos)) {
+                                    long lootTableSeed = decRand.nextLong();
+                                    result.add(new Triplet<>(chestPos, tables.get(i), lootTableSeed));
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    long populationSeed = rand.setPopulationSeed(worldSeed, x * 16, z * 16, version);
+                    if (version.isOlderThan(MCVersion.v1_16)) {
+                        rand.setDecoratorSeed(populationSeed, 9, 3, version);
+                    } else {
+                        rand.setDecoratorSeed(populationSeed, 11, 4, version);
+                    }
+                    for (Piece piece : generationPieces) {
+                        if (piece.type == PieceType.LegacySingle && piece.box.intersects(chunkBox)) {
+                            List<LootTable> tables = VillageStructureLoot.STRUCTURE_LOOT.get(piece.name);
+                            List<BPos> offsets = VillageStructureLoot.STRUCTURE_LOOT_OFFSETS.get(piece.name);
+                            if (tables == null || tables.isEmpty() || offsets == null) continue;
+
+                            for (int i = 0; i < tables.size(); i++) {
+                                BPos offset = offsets.get(i);
+                                BPos chestPos = piece.pos.add(Piece.getTransformedPos(offset, piece.rotation));
+                                if (chunkBox.contains(chestPos)) {
+                                    long lootTableSeed = rand.nextLong();
+                                    result.add(new Triplet<>(chestPos, tables.get(i), lootTableSeed));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    public List<Triplet<BPos, LootTable, Long>> getChestsWithLootSeeds() {
+        return getChestsWithLootSeeds(this.worldSeed, this.getVersion());
+    }
+
+    public static int getFeatureIndex(VillageType type) {
+        if (type == null) return 22;
+        switch (type) {
+            case DESERT:  return 21;
+            case PLAINS:  return 22;
+            case SAVANNA: return 23;
+            case SNOWY:   return 24;
+            case TAIGA:   return 23;
+            default:      return 22;
+        }
+    }
+
+    public int getFeatureIndex() {
+        return getFeatureIndex(this.villageType);
     }
 
     public List<CPos> getChestsPosition() {

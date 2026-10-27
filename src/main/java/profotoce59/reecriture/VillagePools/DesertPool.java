@@ -134,6 +134,9 @@ public interface DesertPool {
                     new Pair<>("desert/zombie/villagers/nitwit", 1),
                     new Pair<>("desert/zombie/villagers/unemployed", 10)
             ), VillageGenerator.PlacementBehaviour.RIGID));
+            put(PoolType.DESERT_CAMEL, new Triplet<>(PoolType.EMPTY, Collections.singletonList(
+                    new Pair<>("desert/camel_spawn", 1)
+            ), VillageGenerator.PlacementBehaviour.RIGID));
             putAll(CommonPool.VILLAGE_POOLS);
         }};
     }

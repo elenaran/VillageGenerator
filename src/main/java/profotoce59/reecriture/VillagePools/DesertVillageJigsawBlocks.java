@@ -16,6 +16,9 @@ import java.util.List;
 public class DesertVillageJigsawBlocks {
     public static final HashMap<String, List<Pair<Quad<PoolType, String, Pair<BlockDirection,BlockDirection>, Block>, BPos>>> JIGSAW_BLOCKS = new HashMap<>() {{
         this.putAll(CommonVillageJigsawBlocks.JIGSAW_BLOCKS);
+        this.put("desert/camel_spawn", Collections.singletonList(
+                new Pair<>(new Quad<>(PoolType.EMPTY, "empty", new Pair<>(BlockDirection.DOWN,BlockDirection.NORTH), Blocks.STRUCTURE_VOID), new BPos(0,0,0))
+        ));
         this.put("desert/desert_lamp_1", Collections.singletonList(
                 new Pair<>(new Quad<>(PoolType.EMPTY, "bottom", new Pair<>(BlockDirection.DOWN,BlockDirection.SOUTH), Blocks.CUT_SANDSTONE), new BPos(0,0,0))
         ));
@@ -462,6 +465,9 @@ public class DesertVillageJigsawBlocks {
     }};
     public static final HashMap<String, List<Pair<Quad<PoolType, String, Pair<BlockDirection,BlockDirection>, Block>, BPos>>> JIGSAW_BLOCKS15 = new HashMap<>() {{
         this.putAll(CommonVillageJigsawBlocks.JIGSAW_BLOCKS15);
+        this.put("desert/camel_spawn", Collections.singletonList(
+                new Pair<>(new Quad<>(PoolType.EMPTY, "empty", new Pair<>(BlockDirection.DOWN,BlockDirection.NORTH), Blocks.STRUCTURE_VOID), new BPos(0,0,0))
+        ));
         this.put("desert/desert_lamp_1", Collections.singletonList(
                 new Pair<>(new Quad<>(PoolType.EMPTY, "bottom", new Pair<>(BlockDirection.DOWN,BlockDirection.SOUTH), Blocks.CUT_SANDSTONE), new BPos(0,0,0))
         ));
@@ -908,6 +914,9 @@ public class DesertVillageJigsawBlocks {
     }};
     public static final HashMap<String, List<Pair<Quad<PoolType, String, Pair<BlockDirection,BlockDirection>, Block>, BPos>>> JIGSAW_BLOCKS17 = new HashMap<>() {{
         this.putAll(CommonVillageJigsawBlocks.JIGSAW_BLOCKS);
+        this.put("desert/camel_spawn", Collections.singletonList(
+                new Pair<>(new Quad<>(PoolType.EMPTY, "empty", new Pair<>(BlockDirection.DOWN,BlockDirection.NORTH), Blocks.STRUCTURE_VOID), new BPos(0,0,0))
+        ));
         this.put("desert/desert_lamp_1", Collections.singletonList(
                 new Pair<>(new Quad<>(PoolType.EMPTY, "bottom", new Pair<>(BlockDirection.DOWN,BlockDirection.SOUTH), Blocks.CUT_SANDSTONE), new BPos(0,0,0))
         ));
@@ -1121,6 +1130,7 @@ public class DesertVillageJigsawBlocks {
                 new Pair<>(new Quad<>(PoolType.EMPTY, "street", new Pair<>(BlockDirection.WEST,BlockDirection.UP), Blocks.STRUCTURE_VOID), new BPos(0,1,1))
         ));
         this.put("desert/town_centers/desert_meeting_point_1", Arrays.asList(
+                new Pair<>(new Quad<>(PoolType.DESERT_CAMEL, "empty", new Pair<>(BlockDirection.UP,BlockDirection.SOUTH), Blocks.SMOOTH_SANDSTONE), new BPos(8,0,4)),
                 new Pair<>(new Quad<>(PoolType.IRON_GOLEM, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SMOOTH_SANDSTONE), new BPos(9,0,1)),
                 new Pair<>(new Quad<>(PoolType.DESERT_VILLAGER, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SMOOTH_SANDSTONE), new BPos(11,0,0)),
                 new Pair<>(new Quad<>(PoolType.DESERT_VILLAGER, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SMOOTH_SANDSTONE), new BPos(15,0,1)),
@@ -1140,6 +1150,7 @@ public class DesertVillageJigsawBlocks {
                 new Pair<>(new Quad<>(PoolType.DESERT_VILLAGER, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SMOOTH_SANDSTONE), new BPos(1,0,8)),
                 new Pair<>(new Quad<>(PoolType.IRON_GOLEM, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SMOOTH_SANDSTONE), new BPos(1,0,10)),
                 new Pair<>(new Quad<>(PoolType.DESERT_VILLAGER, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SMOOTH_SANDSTONE), new BPos(4,0,10)),
+                new Pair<>(new Quad<>(PoolType.DESERT_CAMEL, "empty", new Pair<>(BlockDirection.UP,BlockDirection.WEST), Blocks.SMOOTH_SANDSTONE), new BPos(6,0,1)),
                 new Pair<>(new Quad<>(PoolType.CATS, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SMOOTH_SANDSTONE), new BPos(10,0,3)),
                 new Pair<>(new Quad<>(PoolType.DESERT_VILLAGER, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SMOOTH_SANDSTONE), new BPos(10,0,10)),
                 new Pair<>(new Quad<>(PoolType.DESERT_STREET, "street", new Pair<>(BlockDirection.WEST,BlockDirection.UP), Blocks.STRUCTURE_VOID), new BPos(0,1,5)),
@@ -1153,6 +1164,7 @@ public class DesertVillageJigsawBlocks {
                 new Pair<>(new Quad<>(PoolType.DESERT_VILLAGER, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SAND), new BPos(3,0,10)),
                 new Pair<>(new Quad<>(PoolType.IRON_GOLEM, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SAND), new BPos(4,0,11)),
                 new Pair<>(new Quad<>(PoolType.DESERT_VILLAGER, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SAND), new BPos(6,0,10)),
+                new Pair<>(new Quad<>(PoolType.DESERT_CAMEL, "empty", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SAND), new BPos(7,0,8)),
                 new Pair<>(new Quad<>(PoolType.DESERT_VILLAGER, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SAND), new BPos(8,0,5)),
                 new Pair<>(new Quad<>(PoolType.DESERT_DECOR, "bottom", new Pair<>(BlockDirection.UP,BlockDirection.NORTH), Blocks.SAND), new BPos(13,0,11)),
                 new Pair<>(new Quad<>(PoolType.DESERT_STREET, "street", new Pair<>(BlockDirection.WEST,BlockDirection.UP), Blocks.STRUCTURE_VOID), new BPos(0,1,7)),

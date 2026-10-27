@@ -37,6 +37,7 @@ public class VillagePoolYMax {
         put(PoolType.DESERT_ZDECOR,4);
         put(PoolType.DESERT_VILLAGER,3);
         put(PoolType.DESERT_ZVILLAGER,3);
+        put(PoolType.DESERT_CAMEL,4);
 
         put(PoolType.EMPTY,0);
         put(PoolType.TAIGA_TERMINATOR,2);

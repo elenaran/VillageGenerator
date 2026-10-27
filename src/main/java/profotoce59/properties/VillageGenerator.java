@@ -143,6 +143,48 @@ public class VillageGenerator extends Generator {
         return true;
     }
 
+    public boolean generate(long worldSeed, int chunkX, int chunkZ, ChunkRand rand, VillageType villageType, int surfaceY) {
+        this.worldSeed = worldSeed;
+        this.villageType = villageType;
+        if (this.villageType == null) return false;
+
+        pieces = new ArrayList<>();
+        rand = rand.asChunkRandDebugger();
+        rand.setCarverSeed(worldSeed, chunkX, chunkZ, this.getVersion());
+        BlockRotation rotation = BlockRotation.getRandom(rand);
+
+        JigSawPool jigSawPool = STARTS.get(villageType);
+        String template = rand.getRandom(jigSawPool.getTemplates());
+        BPos size = VillageStructureSize.STRUCTURE_SIZE.get(template);
+        BPos bPos = new CPos(chunkX, chunkZ).toBlockPos(0);
+        BlockBox box = BlockBox.getBoundingBox(bPos, rotation, BPos.ORIGIN, BlockMirror.NONE, size);
+        int centerX = (box.minX + box.maxX) / 2;
+        int centerZ = (box.minZ + box.maxZ) / 2;
+        int heightY = this.heightEstimator != null ? this.heightEstimator.getHeight(centerX, centerZ) : surfaceY;
+        int y = bPos.getY() + heightY;
+        int centerY = box.minY + 1;
+
+        Piece piece = new Piece(template, bPos, box, rotation, PlacementBehaviour.RIGID, 0);
+        piece.move(0, y - centerY, 0);
+        piece.setBoundsTop(y + 80);
+        BlockBox fullBox = new BlockBox(centerX - 80, y - 80, centerZ - 80, centerX + 80 + 1, y + 80 + 1, centerZ + 80 + 1);
+        Assembler assembler = new Assembler(6, null, this.pieces, useHeightMapOptimizer, heightY, this.getVersion(), this.heightEstimator);
+        assembler.pieces.add(piece);
+        VoxelShape a = new VoxelShape(fullBox);
+        a.fullBoxes.add(new BlockBox(box.minX, box.minY, box.minZ, box.maxX + 1, box.maxY + 1, box.maxZ + 1));
+        piece.voxelShape = a;
+        assembler.placing.addLast(piece);
+        while (!assembler.placing.isEmpty()) {
+            assembler.tryPlacing(villageType, assembler.placing.removeFirst(), rand, true);
+        }
+        generated = true;
+        return true;
+    }
+
+    public boolean generate(long worldSeed, int chunkX, int chunkZ, ChunkRand rand, VillageType villageType) {
+        return generate(worldSeed, chunkX, chunkZ, rand, villageType, 64);
+    }
+
     public List<Pair<BPos, List<ItemStack>>> generateLoot(OverworldTerrainGenerator generator, ChunkRand rand){
         if(!generated){
             throw new IllegalArgumentException("No village generated yet, please call generate and make sure the call returns true");
@@ -176,7 +218,10 @@ public class VillageGenerator extends Generator {
             decRand.setDecoratorSeed(popseed, getFeatureIndex(), 4);
 
             for (Piece piece : generationPieces) {
-                if (piece.type == PieceType.LegacySingle && piece.box.intersects(chunkBox)) {
+                if (!piece.box.intersects(chunkBox)) continue;
+                if (piece.type == PieceType.Feature) {
+                    piece.placeFeature18(decRand, this.heightEstimator);
+                } else if (piece.type == PieceType.LegacySingle) {
                     List<LootTable> tables = VillageStructureLoot.STRUCTURE_LOOT.get(piece.name);
                     List<BPos> offsets = VillageStructureLoot.STRUCTURE_LOOT_OFFSETS.get(piece.name);
                     if (tables == null || tables.isEmpty() || offsets == null) continue;
@@ -286,7 +331,7 @@ public class VillageGenerator extends Generator {
                     .get(this.name);
             List<BlockJigsawInfo> list = new ArrayList<>(blocks.size());
             for (Pair<Quad<PoolType, String, Pair<BlockDirection, BlockDirection>, Block>, BPos> b : blocks) {
-
+                if (b.getFirst().getFirst() == PoolType.DESERT_CAMEL && version.isOlderThan(MCVersion.v1_20)) continue;
 
                 BlockJigsawInfo blockJigsawInfo = new BlockJigsawInfo(b.getFirst()
                         , rotation.rotate(b.getSecond(),new BPos(0,0,0)).add(offset),rotation );//erreur quand c'est up
@@ -452,6 +497,67 @@ public class VillageGenerator extends Generator {
         public VoxelShape getVoxelShape() {
             return this.voxelShape;
         }
+
+        public void placeFeature18(DecoratorRand rand, profotoce59.terrain.SurfaceHeightEstimator estimator) {
+            switch (name) {
+                case "patch_cactus" -> {
+                    for (int j = 0; j < 10; j++) {
+                        rand.nextInt(8);
+                        rand.nextInt(8);
+                        rand.nextInt(4);
+                        rand.nextInt(4);
+                        rand.nextInt(8);
+                        rand.nextInt(8);
+                    }
+                }
+                case "taiga/patch_taiga_grass" -> {
+                    for (int j = 0; j < 32; j++) {
+                        rand.nextInt(8);
+                        rand.nextInt(8);
+                        rand.nextInt(4);
+                        rand.nextInt(4);
+                        rand.nextInt(8);
+                        rand.nextInt(8);
+                    }
+                }
+                case "taiga/patch_berry_bush", "flower_plain" -> {
+                    for (int j = 0; j < 96; j++) {
+                        rand.nextInt(8);
+                        rand.nextInt(8);
+                        rand.nextInt(4);
+                        rand.nextInt(4);
+                        rand.nextInt(8);
+                        rand.nextInt(8);
+                    }
+                }
+                case "pile_hay", "pile_melon", "snowy/pile_snow", "snowy/pile_ice", "taiga/pile_pumpkin" -> {
+                    boolean rotated = name.equals("pile_hay");
+                    boolean weighted = name.equals("snowy/pile_ice") || name.equals("taiga/pile_pumpkin");
+                    int i = 2 + rand.nextInt(2);
+                    int j = 2 + rand.nextInt(2);
+                    for (BPos blockpos : Utils.getAllInBoxMutable(pos.add(-i, 0, -j), pos.add(i, 1, j))) {
+                        int k = pos.getX() - blockpos.getX();
+                        int l = pos.getZ() - blockpos.getZ();
+                        boolean place = false;
+                        if ((float) (k * k + l * l) <= rand.nextFloat() * 10.0F - rand.nextFloat() * 6.0F) {
+                            place = true;
+                        } else if ((double) rand.nextFloat() < 0.031D) {
+                            place = true;
+                        }
+                        if (place && estimator != null && blockpos.getY() >= estimator.getHeight(blockpos.getX(), blockpos.getZ())) {
+                            if (rotated) {
+                                rand.nextInt(3);
+                            } else if (weighted) {
+                                rand.nextInt(name.equals("snowy/pile_ice") ? 6 : 20);
+                            }
+                        }
+                    }
+                }
+                default -> {
+                    // oak, savanna/acacia, taiga/spruce, taiga/pine have would_survive placement filter that fails on village street blocks before consuming RNG
+                }
+            }
+        }
     }
 
     public static class BlockJigsawInfo {
@@ -568,15 +674,17 @@ public class VillageGenerator extends Generator {
                             list = jigSawPool1.getTemplates();
                             if(list.size() !=0) {
                                 rand.shuffle(list);
-                                rand.advance(1);
+                                if ((this.version != null ? this.version : generator.getVersion()).isOlderThan(MCVersion.v1_18)) rand.advance(1);
                             }
                         }
                         LinkedList<String> listtmp = jigSawPool2.getTemplates();
                         if(listtmp.size() !=0) {
                             rand.shuffle(listtmp);
-                            rand.advance(1);
+                            if ((this.version != null ? this.version : generator.getVersion()).isOlderThan(MCVersion.v1_18)) rand.advance(1);
                         }
                         list.addAll(listtmp);
+
+
                         for (String jigsawpiece1 : list) {
                             //2700 passages
                             if (jigsawpiece1.equals("empty")){
@@ -658,8 +766,8 @@ public class VillageGenerator extends Generator {
                                             mutableobject1.fullBoxes.add(new BlockBox(box3.minX,box3.minY,box3.minZ,
                                                     box3.maxX+1,box3.maxY+1,box3.maxZ+1));
                                             Piece piece2 = new Piece(jigsawpiece1,blockpos5,box3,rotation1,piece1.placementBehaviour,depth+1);
+                                            this.pieces.add(piece2);
                                             if(depth+1<= this.maxDepth){
-                                                this.pieces.add(piece2);
                                                 piece2.setVoxelShape(mutableobject1);
                                                 this.placing.addLast(piece2);
                                             }
@@ -731,7 +839,10 @@ public class VillageGenerator extends Generator {
                     decRand.setDecoratorSeed(popseed, getFeatureIndex(), 4);
 
                     for (Piece piece : generationPieces) {
-                        if (piece.type == PieceType.LegacySingle && piece.box.intersects(chunkBox)) {
+                        if (!piece.box.intersects(chunkBox)) continue;
+                        if (piece.type == PieceType.Feature) {
+                            piece.placeFeature18(decRand, this.heightEstimator);
+                        } else if (piece.type == PieceType.LegacySingle) {
                             List<LootTable> tables = VillageStructureLoot.STRUCTURE_LOOT.get(piece.name);
                             List<BPos> offsets = VillageStructureLoot.STRUCTURE_LOOT_OFFSETS.get(piece.name);
                             if (tables == null || tables.isEmpty() || offsets == null) continue;
@@ -786,7 +897,7 @@ public class VillageGenerator extends Generator {
             case PLAINS:  return 22;
             case SAVANNA: return 23;
             case SNOWY:   return 24;
-            case TAIGA:   return 23;
+            case TAIGA:   return 25;
             default:      return 22;
         }
     }

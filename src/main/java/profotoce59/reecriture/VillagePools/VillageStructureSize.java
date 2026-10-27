@@ -30,6 +30,7 @@ public class VillageStructureSize {
         this.put("decays/grass_11x13", new BPos(13, 1, 11));
         this.put("decays/grass_16x16", new BPos(16, 1, 16));
         this.put("decays/grass_9x9", new BPos(9, 1, 9));
+        this.put("desert/camel_spawn", new BPos(1, 4, 2));
         this.put("desert/desert_lamp_1", new BPos(1, 4, 1));
         this.put("desert/houses/desert_animal_pen_1", new BPos(10, 6, 7));
         this.put("desert/houses/desert_animal_pen_2", new BPos(10, 6, 8));

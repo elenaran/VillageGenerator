@@ -40,6 +40,26 @@ public class DecoratorRand {
         return a + (long) b;
     }
 
+    public int nextInt(int n) {
+        if (n <= 0) throw new IllegalArgumentException("Bound must be positive");
+        long l = Integer.toUnsignedLong((int) this.xoroNextLong());
+        long l2 = l * (long) n;
+        long l3 = l2 & 0xFFFFFFFFL;
+        if (l3 < (long) n) {
+            int n2 = Integer.remainderUnsigned(~n + 1, n);
+            while (l3 < (long) n2) {
+                l = Integer.toUnsignedLong((int) this.xoroNextLong());
+                l2 = l * (long) n;
+                l3 = l2 & 0xFFFFFFFFL;
+            }
+        }
+        return (int) (l2 >> 32);
+    }
+
+    public float nextFloat() {
+        return (float) (this.xoroNextLong() >>> 40) * 5.9604645E-8F;
+    }
+
     public long getPopulationSeed(long worldseed, int chunkOriginX, int chunkOriginZ) {
         this.setSeed(worldseed);
         long a = this.nextLong() | 1L;

@@ -9,6 +9,7 @@ public class SurfaceHeightEstimator {
 
     private final CubicSpline offsetSpline;
     private final CubicSpline factorSpline;
+    private ExactHeightSampler exactSampler;
 
     public SurfaceHeightEstimator(long worldSeed) {
         this.worldSeed = worldSeed;
@@ -61,8 +62,15 @@ public class SurfaceHeightEstimator {
         return this.worldSeed;
     }
 
+    public synchronized ExactHeightSampler getExactSampler() {
+        if (this.exactSampler == null) {
+            this.exactSampler = new ExactHeightSampler(this);
+        }
+        return this.exactSampler;
+    }
+
     public int getHeight(int x, int z) {
-        return getPreliminarySurfaceLevel(x, z);
+        return getExactSampler().getHeight(x, z);
     }
 
     public int getSurfaceHeight(int x, int z) {
@@ -154,4 +162,9 @@ public class SurfaceHeightEstimator {
     private static double lerp(double t, double a, double b) {
         return a + t * (b - a);
     }
+
+    public NormalNoise getShiftNoise() { return shiftNoise; }
+    public NormalNoise getContinentalnessNoise() { return continentalnessNoise; }
+    public NormalNoise getErosionNoise() { return erosionNoise; }
+    public NormalNoise getWeirdnessNoise() { return weirdnessNoise; }
 }

@@ -33,6 +33,7 @@ public class VillageStructureLoot {
         this.put("decays/grass_11x13", List.of());
         this.put("decays/grass_16x16", List.of());
         this.put("decays/grass_9x9", List.of());
+        this.put("desert/camel_spawn", List.of());
         this.put("desert/desert_lamp_1", List.of());
         this.put("desert/houses/desert_animal_pen_1", List.of());
         this.put("desert/houses/desert_animal_pen_2", List.of());
@@ -518,6 +519,7 @@ public class VillageStructureLoot {
         this.put("decays/grass_11x13", List.of());
         this.put("decays/grass_16x16", List.of());
         this.put("decays/grass_9x9", List.of());
+        this.put("desert/camel_spawn", List.of());
         this.put("desert/desert_lamp_1", List.of());
         this.put("desert/houses/desert_animal_pen_1", List.of());
         this.put("desert/houses/desert_animal_pen_2", List.of());

@@ -30,6 +30,7 @@ package profotoce59.enumType;public enum PoolType {
     DESERT_ZVILLAGER,
     DESERT_TERMINATOR,
     DESERT_ZTERMINATOR,
+    DESERT_CAMEL,
 
     TAIGA_CENTER,
     TAIGA_STREET,

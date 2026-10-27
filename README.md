@@ -10,35 +10,34 @@ Support for every type of village (Plains, Desert, Savanna, Taiga, Snowy).
 - Based on libraries and code by **KaptainWutax**, **Mojang**, and **Neil**.
 - Thanks to **Solver3002** and **Jellejurre** for their contributions to earlier versions.
 - Thanks to **Kludwisz** and **Gaider10** for the **[AncientCityGenerator](https://github.com/Kludwisz/AncientCityGenerator)** project and reference implementation.
-- Credit to **cubitect** for the **[Cubiomes](https://github.com/Cubitect/cubiomes)** project, and **xpple** for the **[cubiomes fork](https://github.com/xpple/cubiomes)** implementing 1.18+ village pieces and surface height estimation reference.
+- Credit to **cubitect** for the **[Cubiomes](https://github.com/Cubitect/cubiomes)** project, and **xpple** for the **[cubiomes fork](https://github.com/xpple/cubiomes)** implementing 1.18+ terrain and structure references.
+- Thanks to **[M33Galaxy](https://github.com/M33Galaxy)** and **[SunnySlopes](https://github.com/SunnySlopes)** for **[LowYSwampHut](https://github.com/M33Galaxy/LowYSwampHut)**, and **[KalleStruik](https://github.com/KalleStruik)** for **[noise-sampler](https://github.com/KalleStruik/noise-sampler)**, used as references for exact 1.18+ 3D terrain density and aquifer simulation.
 
-## 1.18+ Surface Height Estimation
-Minecraft 1.18 introduced the 3D multi-noise terrain generator. Full 3D column density simulation is slow, so `SurfaceHeightEstimator` provides an estimation based on preliminary surface levels (using continentalness, erosion, peaks & valleys, and cubic splines), inspired by Cubiomes.
+## 1.18+ Exact Surface Height & Biome Sampling
+Minecraft 1.18 introduced the 3D multi-noise terrain generator and `NoiseBasedAquifer`. `SurfaceHeightEstimator` (backed by `ExactHeightSampler` and `AquiferSampler`) reproduces vanilla's exact `WORLD_SURFACE_WG` column heights by evaluating 3D `final_density` (including `BlendedNoise`, `TerrainSpline`, cheese/spaghetti/pillar/entrance caves, and 3D-interpolated `noodle` caves) together with `NoiseBasedAquifer` fluid and pressure-barrier simulation. `MultiNoiseBiomeSource` provides 1.18+ multi-noise biome lookup for validating village biomes.
 
 ### Usage Example (1.18+)
 ```java
 MCVersion version = MCVersion.v1_21;
-long seed = 12345L;
+long seed = 2264904L;
 
 // 1. Create village structure and find candidate chunk
 Village village = VillageConfig.getVillage(version);
 ChunkRand rand = new ChunkRand();
-CPos chunkPos = village.getInRegion(seed, 0, 0, rand);
+CPos chunkPos = village.getInRegion(seed, 1, -1, rand);
 
-// 2. Setup VillageGenerator with the SurfaceHeightEstimator
+// 2. Check 1.18+ village biome and setup exact surface height sampler
+MultiNoiseBiomeSource biomeSource = new MultiNoiseBiomeSource(seed);
+int biomeId = biomeSource.getViableVillageBiome(chunkPos.getX(), chunkPos.getZ());
+
 VillageGenerator generator = new VillageGenerator(version);
 SurfaceHeightEstimator heightEstimator = new SurfaceHeightEstimator(seed);
 generator.setHeightEstimator(heightEstimator);
 
-// 3. Generate village pieces
-OverworldBiomeSource biomeSource = new OverworldBiomeSource(version, seed);
-// ... generate and retrieve chest locations with loot seeds
+// 3. Generate village pieces and retrieve chest locations with loot seeds
+generator.generate(seed, chunkPos.getX(), chunkPos.getZ(), rand, VillageType.DESERT);
 List<Triplet<BPos, LootTable, Long>> chests = generator.getChestsWithLootSeeds(seed, version);
 ```
-
-### Limitations
-- `SurfaceHeightEstimator` computes preliminary surface height. On typical rolling terrain, plains, deserts, and plateaus, it matches closely. However, it does not simulate 3D caves, overhangs, floating terrain, or local surface carvers.
-- On extreme mountain overhangs or steep cliffs, estimated surface heights may differ by a few blocks from the in-game terrain, which can occasionally alter piece attachment heights in complex village layouts.
 
 # Install Instructions
 Add the following to your build.gradle repositories block

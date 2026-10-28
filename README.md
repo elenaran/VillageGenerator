@@ -39,6 +39,28 @@ generator.generate(seed, chunkPos.getX(), chunkPos.getZ(), rand, VillageType.DES
 List<Triplet<BPos, LootTable, Long>> chests = generator.getChestsWithLootSeeds(seed, version);
 ```
 
+## Seed Searcher (`VillageSearcher`)
+`VillageSearcher` provides a fast, multi-threaded search across structure seeds and world seeds:
+- **Stage 1:** Fast 48-bit structure seed layout filtering 
+- **Stage 2:** Upper 16-bit world seed verification with biome and exact 3D surface/aquifer heights.
+
+```java
+VillageSearcher.Filter filter = new VillageSearcher.Filter()
+    .setVersion(MCVersion.v1_21)
+    .setVillageTypes(VillageType.DESERT, VillageType.TAIGA, VillageType.PLAINS)
+    .setRegionRadius(2)
+    .setMinEnclosedBuildings(35)
+    .requirePieceCount("cartographer", 2)
+    .requirePieceCount("weaponsmith", 1);
+
+new VillageSearcher(filter).search(1, 10000, 5, result -> {
+    System.out.println(result);
+    System.out.printf("  Cartographers: %d, Weaponsmiths: %d%n",
+        result.countPiecesMatching("cartographer"),
+        result.countPiecesMatching("weaponsmith"));
+});
+```
+
 # Install Instructions
 Add the following to your build.gradle repositories block
 ```    

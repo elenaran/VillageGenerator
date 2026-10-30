@@ -70,13 +70,13 @@ public enum VillageType {
 
     public static VillageType getType(Biome biome, MCVersion version, boolean superflat) {
         if(version.isOlderThan(MCVersion.v1_14)) return LEGACY;
-        if(biome.equals(Biomes.PLAINS) || superflat) {
+        if(biome.equals(Biomes.PLAINS) || biome.equals(Biomes.SUNFLOWER_PLAINS) || (Biomes.REGISTRY.containsKey(168) && biome.equals(Biomes.REGISTRY.get(168))) || superflat) {
             return PLAINS;
         }
         if(Biomes.DESERT.equals(biome)) {
             return DESERT;
         }
-        if(Biomes.SAVANNA.equals(biome)) {
+        if(Biomes.SAVANNA.equals(biome) || Biomes.SAVANNA_PLATEAU.equals(biome) || Biomes.SHATTERED_SAVANNA.equals(biome) || Biomes.SHATTERED_SAVANNA_PLATEAU.equals(biome)) {
             return SAVANNA;
         }
         if(Biomes.SNOWY_TUNDRA.equals(biome)) {

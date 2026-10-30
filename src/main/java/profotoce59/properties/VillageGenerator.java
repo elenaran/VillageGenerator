@@ -195,6 +195,31 @@ public class VillageGenerator extends Generator {
         return generate(worldSeed, chunkX, chunkZ, rand, villageType, 64);
     }
 
+    public List<Pair<BPos, List<ItemStack>>> generateLoot(ChunkRand rand) {
+        if (!generated) {
+            throw new IllegalArgumentException("No village generated yet, please call generate and make sure the call returns true");
+        }
+        List<Piece> generationPieces = new ArrayList<>(pieces);
+
+        BlockBox maxbox = generationPieces.stream().map(x -> x.box).reduce((piece1, piece2) -> new BlockBox(Math.min(piece1.minX, piece2.minX), Math.min(piece1.minY, piece2.minY), Math.min(piece1.minZ, piece2.minZ),
+             Math.max(piece1.maxX, piece2.maxX), Math.max(piece1.maxY, piece2.maxY), Math.max(piece1.maxZ, piece2.maxZ))).get();
+
+        for (int x = maxbox.minX >> 4; x <= maxbox.maxX >> 4; x++) {
+            for (int z = maxbox.minZ >> 4; z <= maxbox.maxZ >> 4; z++) {
+                generateChunkLoot(generationPieces, null, x, z, rand);
+            }
+        }
+
+        return pieces.stream()
+            .filter(x -> !x.loot.isEmpty())
+            .map(x -> {
+                BPos offset = VillageStructureLoot.STRUCTURE_LOOT_OFFSETS.get(x.name).get(0);
+                BPos chestPos = x.pos.add(Piece.getTransformedPos(offset, x.rotation));
+                return new Pair<BPos, List<ItemStack>>(chestPos, x.loot);
+            })
+            .toList();
+    }
+
     public List<Pair<BPos, List<ItemStack>>> generateLoot(OverworldTerrainGenerator generator, ChunkRand rand){
         if(!generated){
             throw new IllegalArgumentException("No village generated yet, please call generate and make sure the call returns true");
@@ -222,9 +247,11 @@ public class VillageGenerator extends Generator {
 
     private void generateChunkLoot(List<Piece> generationPieces, OverworldTerrainGenerator generator, int chunkX, int chunkZ, ChunkRand rand){
         BlockBox chunkBox = new BlockBox(chunkX*16, chunkZ*16, chunkX*16 + 15, chunkZ*16 + 15);
-        if (generator.getVersion().isNewerOrEqualTo(MCVersion.v1_18)) {
+        MCVersion ver = generator != null ? generator.getVersion() : this.getVersion();
+        long seed = generator != null ? generator.getWorldSeed() : this.worldSeed;
+        if (ver.isNewerOrEqualTo(MCVersion.v1_18)) {
             DecoratorRand decRand = new DecoratorRand();
-            long popseed = decRand.getPopulationSeed(generator.getWorldSeed(), chunkX * 16, chunkZ * 16);
+            long popseed = decRand.getPopulationSeed(seed, chunkX * 16, chunkZ * 16);
             decRand.setDecoratorSeed(popseed, getFeatureIndex(), 4);
 
             for (Piece piece : generationPieces) {
@@ -241,8 +268,8 @@ public class VillageGenerator extends Generator {
                         if (chunkBox.contains(piece.pos.add(Piece.getTransformedPos(offset, piece.rotation)))) {
                             long lootTableSeed = decRand.nextLong();
                             if (tables.get(i) != MCLootTables.NULL) {
-                                tables.get(i).apply(generator.getVersion());
-                                piece.loot.addAll(tables.get(i).generate(new LootContext(lootTableSeed, generator.getVersion())));
+                                tables.get(i).apply(ver);
+                                piece.loot.addAll(tables.get(i).generate(new LootContext(lootTableSeed, ver)));
                             }
                         }
                     }
@@ -308,6 +335,30 @@ public class VillageGenerator extends Generator {
         List<ItemStack> loot = new ArrayList<>();
         public String getName(){
             return this.name;
+        }
+        public PlacementBehaviour getPlacementBehaviour() {
+            return this.placementBehaviour;
+        }
+        public int getDepth() {
+            return this.depth;
+        }
+        public PieceType getType() {
+            return this.type;
+        }
+        public List<ItemStack> getLoot() {
+            return this.loot;
+        }
+        public BPos getPos() {
+            return this.pos;
+        }
+        public BlockBox getBox() {
+            return this.box;
+        }
+        public BlockRotation getRotation() {
+            return this.rotation;
+        }
+        public int getBoundsTop() {
+            return this.boundsTop;
         }
         //add a second constructor in order to avoid to use the method contains while we are not sure the piece will spawn (line 532)
         public Piece(String name, BPos pos, BlockBox box, BlockRotation rotation, PlacementBehaviour placementBehaviour,int depth) {

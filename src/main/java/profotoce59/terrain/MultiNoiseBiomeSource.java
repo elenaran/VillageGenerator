@@ -203,9 +203,9 @@ public class MultiNoiseBiomeSource {
         int sampleY = surfaceY >> 2;
 
         int id = getBiomeAtQuart(sampleX, sampleY, sampleZ);
-        if (id == 1 || id == 168) return 1;
+        if (id == 1 || id == 168 || id == 129) return 1;
         if (id == 2) return 2;
-        if (id == 35) return 35;
+        if (id == 35 || id == 36 || id == 163 || id == 164) return 35;
         if (id == 5) return 5;
         if (id == 12) return 12;
 
@@ -218,9 +218,9 @@ public class MultiNoiseBiomeSource {
         int sampleY = 79; // 319 >> 2
 
         int id = getBiomeAtQuart(sampleX, sampleY, sampleZ);
-        if (id == 1 || id == 168) return 1;
+        if (id == 1 || id == 168 || id == 129) return 1;
         if (id == 2) return 2;
-        if (id == 35) return 35;
+        if (id == 35 || id == 36 || id == 163 || id == 164) return 35;
         if (id == 5) return 5;
         if (id == 12) return 12;
 
@@ -241,9 +241,9 @@ public class MultiNoiseBiomeSource {
         // Savanna: 35
         // Taiga: 5
         // Snowy: 12 (snowy_plains)
-        if (id == 1 || id == 168) return 1;
+        if (id == 1 || id == 168 || id == 129) return 1;
         if (id == 2) return 2;
-        if (id == 35) return 35;
+        if (id == 35 || id == 36 || id == 163 || id == 164) return 35;
         if (id == 5) return 5;
         if (id == 12) return 12;
 

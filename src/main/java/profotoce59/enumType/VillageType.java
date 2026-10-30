@@ -52,6 +52,18 @@ public enum VillageType {
     }
     };
 
+    public static int getTargetBiomeId(VillageType type) {
+        if (type == null) return -1;
+        switch (type) {
+            case PLAINS:  return 1;
+            case DESERT:  return 2;
+            case SAVANNA: return 35;
+            case TAIGA:   return 5;
+            case SNOWY:   return 12;
+            default:      return -1;
+        }
+    }
+
     public static VillageType getType(Biome biome, MCVersion version){
         return getType(biome, version, false);
     }

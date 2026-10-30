@@ -147,6 +147,16 @@ public class MultiNoiseBiomeSource {
         return leaf;
     }
 
+    public float getContinentalness(int quartX, int quartZ) {
+        double px = (double) quartX + shiftNoise.getValue(quartX, 0.0, quartZ) * 4.0;
+        double pz = (double) quartZ + shiftNoise.getValue(quartZ, quartX, 0.0) * 4.0;
+        return (float) continentalnessNoise.getValue(px, 0.0, pz);
+    }
+
+    public boolean isContinentalnessInland(int quartX, int quartZ) {
+        return getContinentalness(quartX, quartZ) >= -0.19f;
+    }
+
     public int climateToBiome(long[] np) {
         int idx = get_resulting_node(np, 0, 0, -1L, 0);
         return (int) ((nodes[idx] >>> 48) & 0xFF);
@@ -187,6 +197,36 @@ public class MultiNoiseBiomeSource {
      * Check if a village can spawn in chunk (chunkX, chunkZ).
      * Returns the viable Village biome ID if viable, or -1 if not.
      */
+    public int getViableVillageBiome(int chunkX, int chunkZ, int surfaceY) {
+        int sampleX = chunkX * 4 + 2;
+        int sampleZ = chunkZ * 4 + 2;
+        int sampleY = surfaceY >> 2;
+
+        int id = getBiomeAtQuart(sampleX, sampleY, sampleZ);
+        if (id == 1 || id == 168) return 1;
+        if (id == 2) return 2;
+        if (id == 35) return 35;
+        if (id == 5) return 5;
+        if (id == 12) return 12;
+
+        return -1;
+    }
+
+    public int getViableVillageBiomeAtBlock(int blockX, int blockZ) {
+        int sampleX = blockX >> 2;
+        int sampleZ = blockZ >> 2;
+        int sampleY = 79; // 319 >> 2
+
+        int id = getBiomeAtQuart(sampleX, sampleY, sampleZ);
+        if (id == 1 || id == 168) return 1;
+        if (id == 2) return 2;
+        if (id == 35) return 35;
+        if (id == 5) return 5;
+        if (id == 12) return 12;
+
+        return -1;
+    }
+
     public int getViableVillageBiome(int chunkX, int chunkZ) {
         // In 1.18+, village types are checked separately at sampleY = 319 >> 2 = 79.
         // Center of starting chunk is (chunkX * 4 + 2, chunkZ * 4 + 2).

@@ -132,17 +132,6 @@ public class VillageSearcher {
         return true;
     }
 
-    private static int getTargetBiomeId(VillageType type) {
-        switch (type) {
-            case PLAINS:  return 1;
-            case DESERT:  return 2;
-            case SAVANNA: return 35;
-            case TAIGA:   return 5;
-            case SNOWY:   return 12;
-            default:      return -1;
-        }
-    }
-
     public void search(long startStructureSeed, long maxStructureSeeds, int maxResults, Consumer<Result> onFound) {
         AtomicInteger found = new AtomicInteger(0);
         MCVersion version = filter.version;
@@ -179,7 +168,13 @@ public class VillageSearcher {
                                 VillageGenerator exactGen = new VillageGenerator(version);
                                 if (is18Plus) {
                                     MultiNoiseBiomeSource bs = new MultiNoiseBiomeSource(worldSeed);
-                                    if (bs.getViableVillageBiome(cpos.getX(), cpos.getZ()) != getTargetBiomeId(vType)) continue;
+                                    int townCenterX = (cpos.getX() << 4) + 8;
+                                    int townCenterZ = (cpos.getZ() << 4) + 8;
+                                    if (!fastGen.pieces.isEmpty()) {
+                                        townCenterX = (fastGen.pieces.get(0).box.minX + fastGen.pieces.get(0).box.maxX) / 2;
+                                        townCenterZ = (fastGen.pieces.get(0).box.minZ + fastGen.pieces.get(0).box.maxZ) / 2;
+                                    }
+                                    if (bs.getViableVillageBiomeAtBlock(townCenterX, townCenterZ) != VillageType.getTargetBiomeId(vType)) continue;
                                     exactGen.setHeightEstimator(new SurfaceHeightEstimator(worldSeed));
                                     if (!exactGen.generate(worldSeed, cpos.getX(), cpos.getZ(), rand, vType)) continue;
                                 } else {

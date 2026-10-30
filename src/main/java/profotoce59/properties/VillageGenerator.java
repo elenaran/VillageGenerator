@@ -34,6 +34,7 @@ import profotoce59.reecriture.VillagePools.*;
 import java.util.*;
 import profotoce59.utils.Utils;
 import profotoce59.utils.DecoratorRand;
+import profotoce59.terrain.MultiNoiseBiomeSource;
 
 public class VillageGenerator extends Generator {
     public List<Piece> pieces;
@@ -160,6 +161,15 @@ public class VillageGenerator extends Generator {
         BlockBox box = BlockBox.getBoundingBox(bPos, rotation, BPos.ORIGIN, BlockMirror.NONE, size);
         int centerX = (box.minX + box.maxX) / 2;
         int centerZ = (box.minZ + box.maxZ) / 2;
+
+        if (this.heightEstimator != null && this.getVersion().isNewerOrEqualTo(MCVersion.v1_18)) {
+            MultiNoiseBiomeSource bs = new MultiNoiseBiomeSource(this.worldSeed);
+            int viableId = bs.getViableVillageBiomeAtBlock(centerX, centerZ);
+            if (viableId != VillageType.getTargetBiomeId(villageType)) {
+                return false;
+            }
+        }
+
         int heightY = this.heightEstimator != null ? this.heightEstimator.getHeight(centerX, centerZ) : surfaceY;
         int y = bPos.getY() + heightY;
         int centerY = box.minY + 1;
@@ -288,7 +298,7 @@ public class VillageGenerator extends Generator {
         public static List<String> featureList = Arrays.asList("pile_hay", "pile_melon", "snowy/pile_snow", "snowy/pile_ice", "taiga/pile_pumpkin", "taiga/patch_berry_bush", "taiga/patch_taiga_grass", "patch_cactus", "flower_plain", "oak", "savanna/acacia", "taiga/spruce", "taiga/pine");
         String name;
         public BPos pos;
-        BlockBox box;
+        public BlockBox box;
         public BlockRotation rotation;
         int boundsTop;
         PlacementBehaviour placementBehaviour;
@@ -300,7 +310,7 @@ public class VillageGenerator extends Generator {
             return this.name;
         }
         //add a second constructor in order to avoid to use the method contains while we are not sure the piece will spawn (line 532)
-        Piece(String name, BPos pos, BlockBox box, BlockRotation rotation, PlacementBehaviour placementBehaviour,int depth) {
+        public Piece(String name, BPos pos, BlockBox box, BlockRotation rotation, PlacementBehaviour placementBehaviour,int depth) {
             this.name = name;
             this.pos = pos;
             this.box = box;

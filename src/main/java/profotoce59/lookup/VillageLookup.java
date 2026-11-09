@@ -108,13 +108,30 @@ public class VillageLookup {
 
         if (version.isNewerOrEqualTo(MCVersion.v1_18)) {
             MultiNoiseBiomeSource bs = new MultiNoiseBiomeSource(worldSeed);
-            int biomeId = bs.getViableVillageBiome(cx, cz);
-            VillageType type = typeOverride != null ? typeOverride : villageTypeFromBiomeId(biomeId);
-
-            if (type == null) {
-                int rawId = bs.getBiomeAtQuart(cx * 4 + 2, 79, cz * 4 + 2);
-                info.rejectionReason = String.format("Invalid village biome: %s (id %d)", getBiomeName(rawId), rawId);
-                return info;
+            VillageType type = typeOverride;
+            BPos center = null;
+            if (type != null) {
+                center = VillageGenerator.getStartPieceCenter(worldSeed, cx, cz, type, version);
+                if (bs.getViableVillageBiomeAtBlock(center.getX(), center.getZ()) != VillageType.getTargetBiomeId(type)) {
+                    int rawId = bs.getBiomeAtQuart(center.getX() >> 2, 79, center.getZ() >> 2);
+                    info.rejectionReason = String.format("Invalid village biome: %s (id %d)", getBiomeName(rawId), rawId);
+                    return info;
+                }
+            } else {
+                for (VillageType vt : new VillageType[]{VillageType.PLAINS, VillageType.DESERT, VillageType.SAVANNA, VillageType.SNOWY, VillageType.TAIGA}) {
+                    BPos c = VillageGenerator.getStartPieceCenter(worldSeed, cx, cz, vt, version);
+                    if (bs.getViableVillageBiomeAtBlock(c.getX(), c.getZ()) == VillageType.getTargetBiomeId(vt)) {
+                        type = vt;
+                        center = c;
+                        break;
+                    }
+                }
+                if (type == null) {
+                    BPos samplePos = VillageGenerator.getStartPieceCenter(worldSeed, cx, cz, VillageType.DESERT, version);
+                    int rawId = bs.getBiomeAtQuart(samplePos.getX() >> 2, 79, samplePos.getZ() >> 2);
+                    info.rejectionReason = String.format("Invalid village biome at start piece: %s (id %d)", getBiomeName(rawId), rawId);
+                    return info;
+                }
             }
 
             SurfaceHeightEstimator he = new SurfaceHeightEstimator(worldSeed);
@@ -122,8 +139,7 @@ public class VillageLookup {
             gen.setHeightEstimator(he);
 
             if (!gen.generate(worldSeed, cx, cz, rand, type)) {
-                int meetingX = (cx << 4) + 8, meetingZ = (cz << 4) + 8;
-                int meetingId = bs.getBiomeAtQuart(meetingX >> 2, 79, meetingZ >> 2);
+                int meetingId = bs.getBiomeAtQuart(center.getX() >> 2, 79, center.getZ() >> 2);
                 info.rejectionReason = String.format("Town meeting point in invalid biome: %s (id %d)", getBiomeName(meetingId), meetingId);
                 return info;
             }

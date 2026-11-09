@@ -1,4 +1,4 @@
-package profotoce59.terrain;
+﻿package profotoce59.terrain;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -13,6 +13,7 @@ public class MultiNoiseBiomeSource {
     private final NormalNoise erosionNoise;
     private final NormalNoise weirdnessNoise;
 
+    private static final CubicSpline STATIC_OFFSET_SPLINE = TerrainProvider.overworldOffset();
     private final CubicSpline offsetSpline;
 
     // Biome tree lookup table
@@ -60,7 +61,7 @@ public class MultiNoiseBiomeSource {
         Xoroshiro128 ridgeRng = new Xoroshiro128(xlo ^ md5Ridge[0], xhi ^ md5Ridge[1]);
         this.weirdnessNoise = new NormalNoise(ridgeRng, -7, new double[]{1, 2, 1, 0, 0, 0});
 
-        this.offsetSpline = TerrainProvider.overworldOffset();
+        this.offsetSpline = STATIC_OFFSET_SPLINE;
     }
 
     private static synchronized void loadTable() {

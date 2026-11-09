@@ -1,4 +1,4 @@
-package profotoce59.properties;
+﻿package profotoce59.properties;
 //1971160871
 import com.seedfinding.mcbiome.biome.Biome;
 import com.seedfinding.mccore.block.Block;
@@ -44,6 +44,12 @@ public class VillageGenerator extends Generator {
     private boolean superflat = false;
     private long worldSeed;
     private profotoce59.terrain.SurfaceHeightEstimator heightEstimator;
+    public PlacementCheck check;
+    public boolean aborted;
+
+    public interface PlacementCheck {
+        boolean reject(Piece parent, Piece child);
+    }
 
     public profotoce59.terrain.SurfaceHeightEstimator getHeightEstimator() {
         return this.heightEstimator;
@@ -176,9 +182,12 @@ public class VillageGenerator extends Generator {
 
         Piece piece = new Piece(template, bPos, box, rotation, PlacementBehaviour.RIGID, 0);
         piece.move(0, y - centerY, 0);
+        aborted = check != null && check.reject(null, piece);
+        if (aborted) return true;
         piece.setBoundsTop(y + 80);
         BlockBox fullBox = new BlockBox(centerX - 80, y - 80, centerZ - 80, centerX + 80 + 1, y + 80 + 1, centerZ + 80 + 1);
         Assembler assembler = new Assembler(6, null, this.pieces, useHeightMapOptimizer, heightY, this.getVersion(), this.heightEstimator);
+        assembler.check = this.check;
         assembler.pieces.add(piece);
         VoxelShape a = new VoxelShape(fullBox);
         a.fullBoxes.add(new BlockBox(box.minX, box.minY, box.minZ, box.maxX + 1, box.maxY + 1, box.maxZ + 1));
@@ -187,12 +196,34 @@ public class VillageGenerator extends Generator {
         while (!assembler.placing.isEmpty()) {
             assembler.tryPlacing(villageType, assembler.placing.removeFirst(), rand, true);
         }
+        aborted = assembler.aborted;
         generated = true;
         return true;
     }
 
     public boolean generate(long worldSeed, int chunkX, int chunkZ, ChunkRand rand, VillageType villageType) {
         return generate(worldSeed, chunkX, chunkZ, rand, villageType, 64);
+    }
+
+    public static BPos getStartPieceCenter(long worldSeed, int chunkX, int chunkZ, VillageType villageType, MCVersion version) {
+        ChunkRand rand = new ChunkRand();
+        rand.setCarverSeed(worldSeed, chunkX, chunkZ, version);
+        BlockRotation rotation = BlockRotation.getRandom(rand);
+        JigSawPool jigSawPool = STARTS.get(villageType);
+        if (jigSawPool == null) return new BPos((chunkX << 4) + 8, 64, (chunkZ << 4) + 8);
+        String template = rand.getRandom(jigSawPool.getTemplates());
+        BPos size = VillageStructureSize.STRUCTURE_SIZE.get(template);
+        if (size == null) return new BPos((chunkX << 4) + 8, 64, (chunkZ << 4) + 8);
+        BPos bPos = new CPos(chunkX, chunkZ).toBlockPos(0);
+        BlockBox box = BlockBox.getBoundingBox(bPos, rotation, BPos.ORIGIN, BlockMirror.NONE, size);
+        return new BPos((box.minX + box.maxX) / 2, box.minY, (box.minZ + box.maxZ) / 2);
+    }
+
+    public static boolean isViable(long worldSeed, int chunkX, int chunkZ, VillageType villageType, MCVersion version) {
+        BPos center = getStartPieceCenter(worldSeed, chunkX, chunkZ, villageType, version);
+        MultiNoiseBiomeSource bs = new MultiNoiseBiomeSource(worldSeed);
+        int target = VillageType.getTargetBiomeId(villageType);
+        return bs.getViableVillageBiomeAtBlock(center.getX(), center.getZ()) == target;
     }
 
     public List<Pair<BPos, List<ItemStack>>> generateLoot(ChunkRand rand) {
@@ -332,6 +363,7 @@ public class VillageGenerator extends Generator {
         private VoxelShape voxelShape;
         int depth;
         PieceType type;
+        public Piece parent;
         List<ItemStack> loot = new ArrayList<>();
         public String getName(){
             return this.name;
@@ -673,6 +705,8 @@ public class VillageGenerator extends Generator {
         profotoce59.terrain.SurfaceHeightEstimator estimator;
 
         private final Deque<Piece> placing = new ArrayDeque<>();
+        PlacementCheck check;
+        boolean aborted;
         Assembler(int maxDepth, TerrainGenerator generator, List<Piece> pieces, boolean useHeightMapOptimizer, int heightY, MCVersion version, profotoce59.terrain.SurfaceHeightEstimator estimator) {
             this.maxDepth = maxDepth;
             this.generator = generator;
@@ -827,7 +861,13 @@ public class VillageGenerator extends Generator {
                                             mutableobject1.fullBoxes.add(new BlockBox(box3.minX,box3.minY,box3.minZ,
                                                     box3.maxX+1,box3.maxY+1,box3.maxZ+1));
                                             Piece piece2 = new Piece(jigsawpiece1,blockpos5,box3,rotation1,piece1.placementBehaviour,depth+1);
+                                            piece2.parent = piece;
                                             this.pieces.add(piece2);
+                                            if (this.check != null && this.check.reject(piece, piece2)) {
+                                                this.aborted = true;
+                                                this.placing.clear();
+                                                return;
+                                            }
                                             if(depth+1<= this.maxDepth){
                                                 piece2.setVoxelShape(mutableobject1);
                                                 this.placing.addLast(piece2);

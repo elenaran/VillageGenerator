@@ -443,4 +443,19 @@ public class ExactHeightSampler {
         }
         return MIN_Y;
     }
+
+    public int getOceanFloorHeight(int x, int z) {
+        // Fast ocean scan: start at cell 16 (Y=64..71) down to cell 10 (Y=16)
+        for (int i = 16; i >= 10; i--) {
+            for (int j = VERTICAL_CELL_SIZE - 1; j >= 0; j--) {
+                int y = (MIN_CELL_Y + i) * VERTICAL_CELL_SIZE + j;
+                double density = getInterpolatedDensity(x, y, z);
+                byte st = aquiferSampler.computeSubstance(x, y, z, density);
+                if (st == AquiferSampler.BLOCK_NULL || st == AquiferSampler.BLOCK_LAVA) {
+                    return y + 1;
+                }
+            }
+        }
+        return MIN_Y;
+    }
 }

@@ -167,4 +167,8 @@ public class SurfaceHeightEstimator {
     public NormalNoise getContinentalnessNoise() { return continentalnessNoise; }
     public NormalNoise getErosionNoise() { return erosionNoise; }
     public NormalNoise getWeirdnessNoise() { return weirdnessNoise; }
+
+    public int getOceanFloorHeight(int x, int z) {
+        return getExactSampler().getOceanFloorHeight(x, z);
+    }
 }

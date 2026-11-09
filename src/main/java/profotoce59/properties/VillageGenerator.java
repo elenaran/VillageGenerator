@@ -1,4 +1,4 @@
-﻿package profotoce59.properties;
+package profotoce59.properties;
 //1971160871
 import com.seedfinding.mcbiome.biome.Biome;
 import com.seedfinding.mccore.block.Block;
@@ -321,10 +321,10 @@ public class VillageGenerator extends Generator {
         Iterator<Piece> iterator = generationPieces.iterator();
         while(iterator.hasNext()) {
             Piece piece = iterator.next();
-            if(piece.type==PieceType.Feature){
-                confident = false;
-            }
             if (piece.box.intersects(chunkBox)){
+                if(piece.type==PieceType.Feature){
+                    confident = false;
+                }
                 if(!piece.place(rand, generator, confident, chunkBox)){
                     iterator.remove();
                 }
@@ -365,6 +365,8 @@ public class VillageGenerator extends Generator {
         PieceType type;
         public Piece parent;
         List<ItemStack> loot = new ArrayList<>();
+        public boolean confident = true;
+        public boolean isConfident() { return this.confident; }
         public String getName(){
             return this.name;
         }
@@ -465,15 +467,13 @@ public class VillageGenerator extends Generator {
                         BPos offset = VillageStructureLoot.STRUCTURE_LOOT_OFFSETS.get(name).get(i);
                         if(boundingBox.contains(pos.add(getTransformedPos(offset, rotation)))) {
                             long lootTableSeed = rand.nextLong();
-                            //If we have generated a feature this chunk, don't add the loot. We're not confident enough.
-                            if (confident) {
-                                //Generate the loot only if we're not talking about barrels
-                                if(tables.get(i)!= MCLootTables.NULL) {
-                                    tables.get(i).apply(otg.getVersion());
-                                    loot.addAll(tables.get(i)
-                                        .generate(
-                                            new LootContext(lootTableSeed, otg.getVersion())));
-                                }
+                            this.confident = confident;
+                            //Generate the loot only if we're not talking about barrels
+                            if(tables.get(i)!= MCLootTables.NULL) {
+                                tables.get(i).apply(otg.getVersion());
+                                loot.addAll(tables.get(i)
+                                    .generate(
+                                        new LootContext(lootTableSeed, otg.getVersion())));
                             }
                         }
                     }
